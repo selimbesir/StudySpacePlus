@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 style="color: #2c3e50; margin: 0;">Analytics Dashboard</h2>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-cancel" style="background: #7f8c8d; text-decoration: none; padding: 10px 20px;">&larr; Back to Admin</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        
+        <div class="card" style="padding: 20px; text-align: center;">
+            <h3 style="color: #34495e;">Most Popular Blocks</h3>
+            <canvas id="blockChart"></canvas>
+        </div>
+
+        <div class="card" style="padding: 20px; text-align: center;">
+            <h3 style="color: #34495e;">Peak Booking Hours</h3>
+            <canvas id="timeChart"></canvas>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // --- 1. BLOCK CHART (Pie) ---
+    const ctxBlock = document.getElementById('blockChart');
+    new Chart(ctxBlock, {
+        type: 'doughnut',
+        data: {
+            labels: {{ block_labels | tojson }},
+            datasets: [{
+                label: '# of Reservations',
+                data: {{ block_values | tojson }},
+                backgroundColor: [
+                    '#3498db', // Blue for A
+                    '#e74c3c'  // Red for C
+                ],
+                hoverOffset: 4
+            }]
+        }
+    });
+
+    // --- 2. TIME CHART (Bar) ---
+    const ctxTime = document.getElementById('timeChart');
+    new Chart(ctxTime, {
+        type: 'bar',
+        data: {
+            labels: {{ time_labels | tojson }}, // ["09:00", "10:00"...]
+            datasets: [{
+                label: 'Reservations Count',
+                data: {{ time_values | tojson }}, // [5, 12, 3...]
+                backgroundColor: '#2ecc71', // Green bars
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1 // No decimals like 1.5 people
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

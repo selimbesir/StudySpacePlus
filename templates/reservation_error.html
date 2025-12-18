@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 60vh;">
+    <div class="card" style="width: 500px; text-align: center; padding: 40px; border-top: 5px solid #c0392b; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        
+        <h2 style="color: #c0392b; margin-top: 0;">Slot Unavailable</h2>
+        
+        <div style="margin: 30px 0; font-size: 18px; line-height: 1.5;">
+            <p>Sorry, there is not enough places fo your group in <strong>{{ space_name }}</strong> for the time slot:</p>
+            <p style="font-weight: bold; font-size: 22px; color: #2c3e50; background: #ecf0f1; padding: 10px; border-radius: 5px; display: inline-block;">
+                {{ time_slot }}
+            </p>
+        </div>
+
+        <p style="color: #7f8c8d; margin-bottom: 30px;">Please try selecting a different time or room.</p>
+        
+        <a href="{{ url_for('show_classrooms', block_name=block_name) }}" class="btn-reserve" style="background-color: #34495e; width: auto; display: inline-block; padding: 12px 30px; text-decoration: none;">
+            &larr; Back to Rooms
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>StudySpace+</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% if request.endpoint != 'login' %}
+    <nav>
+        <h1>StudySpace+</h1>
+        <div>
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('my_reservations') }}">My Reservations</a>
+            
+            {% if session.get('is_admin') %}
+                <a href="{{ url_for('admin_dashboard') }}" style="color: #e74c3c;">Admin Panel</a>
+            {% endif %}
+            
+            <a href="{{ url_for('logout') }}">Logout</a>
+        </div>
+    </nav>
+    </nav>
+    {% endif %}
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

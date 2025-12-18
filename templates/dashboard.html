@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="text-align: center; margin-top: 40px;">
+    <h1 style="color: #2c3e50;">Welcome, {{ name }}!</h1>
+    <h2>Select a Building Block</h2>
+    <p>Choose a block to view available study spaces and classrooms.</p>
+    <div style="display: flex; justify-content: center; gap: 40px; margin-top: 40px; flex-wrap: wrap;">
+        {% for block in blocks %}
+        <div class="card" style="padding: 40px; width: 300px; text-align: center;">
+            <h1 style="font-size: 80px; color: #2c3e50; margin: 0;">{{ block }}</h1>
+            <p style="color: #7f8c8d; margin-bottom: 20px;">Block {{ block }}</p>
+            <a href="{{ url_for('show_classrooms', block_name=block) }}" class="btn-reserve" style="width: auto; padding: 10px 30px;">
+                View Classrooms
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block content %}
+<p><a href="{{ url_for('dashboard') }}" style="color: #666; text-decoration: none;">&larr; Back to Blocks</a></p>
+
+<h2>Classrooms in Block {{ current_block }}</h2>
+
+<div class="filter-container">
+    <label for="capacityFilter">Minimum Capacity:</label>
+    <select id="capacityFilter" onchange="filterRooms()">
+        <option value="0">Show All</option>
+        <option value="4">4+ People</option>
+        <option value="6">6+ People</option>
+        <option value="10">10+ People</option>
+        <option value="20">20+ People</option>
+        <option value="50">50+ People</option>
+    </select>
+    <span style="font-size: 13px; color: #7f8c8d;"/span>
+</div>
+
+<div class="grid" id="roomsGrid">
+    {% for space in spaces %}
+    <div class="card room-card" data-capacity="{{ space.capacity }}">
+        <h3>{{ space.name }}</h3>
+        <p>Capacity: {{ space.capacity }} people</p>
+        
+        {% if space.status == 'available' %}
+            <p class="status-available">Available Today</p>
+        {% else %}
+            <p class="status-reserved">Full Today</p>
+        {% endif %}
+
+        <button class="btn-reserve" 
+                onclick='openModal("{{ space.name }}", "{{ current_block }}", {{ space.capacity }})'>
+            View Schedule & Reserve
+        </button>
+    </div>
+    {% else %}
+    <p>No classrooms found in this block.</p>
+    {% endfor %}
+</div>
+
+<div id="reserveModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle">Confirm Reservation</h3>
+        <hr>
+        
+        <form action="{{ url_for('reserve') }}" method="POST">
+            <input type="hidden" id="formSpaceName" name="space_name">
+            <input type="hidden" id="formBlockName" name="block_name">
+            
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Select Date:</label>
+            <select id="dateSelect" name="selected_date" style="width: 100%; padding: 8px; margin-bottom: 10px;" onchange="updateTimeSlots()">
+                <option value="{{ date_today }}">Today ({{ date_today }})</option>
+                <option value="{{ date_tomorrow }}">Tomorrow ({{ date_tomorrow }})</option>
+            </select>
+
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Availability Timeline:</label>
+            <div id="visualTimeline" class="timeline-wrapper">
+                </div>
+            <div style="font-size: 11px; color: #666; margin-bottom: 15px; display: flex; justify-content: space-between;">
+                <span>09:00</span><span>00:00</span>
+            </div>
+
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Select Time Slot:</label>
+            <select id="timeSlotSelect" name="time_slot" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                </select>
+            
+            <div id="noSlotsMessage" style="display:none; color: #c0392b; font-weight: bold; margin-bottom: 15px;">
+                No slots available for this date.
+            </div>
+
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Group Size:</label>
+            <input type="number" min="1" id="groupSize" name="group_size" style="width: 50px;" required>
+            
+            <p style="font-size: 13px; color: #e67e22; font-weight: bold; margin-top: 15px;">[!] Please do not raise your voices more than normal.</p>
+            
+            <button type="submit" id="confirmBtn" class="btn-reserve">Confirm Reservation</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // --- DATA FROM PYTHON ---
+    var allTimeSlots = {{ time_slots | tojson }};
+    
+    // This now contains ONLY slots that are 100% full
+    var fullSlotsData = {{ booked_data | tojson }}; 
+    
+    // UI Elements
+    var modal = document.getElementById("reserveModal");
+    var title = document.getElementById("modalTitle");
+    var inputSize = document.getElementById("groupSize");
+    var inputSpace = document.getElementById("formSpaceName");
+    var inputBlock = document.getElementById("formBlockName");
+    var dateSelect = document.getElementById("dateSelect");
+    var timeSelect = document.getElementById("timeSlotSelect");
+    var confirmBtn = document.getElementById("confirmBtn");
+    var noSlotsMsg = document.getElementById("noSlotsMessage");
+    var visualTimeline = document.getElementById("visualTimeline");
+
+    var currentSpaceName = ""; 
+
+    // --- 1. FILTER FUNCTION ---
+    function filterRooms() {
+        var minCap = parseInt(document.getElementById("capacityFilter").value);
+        var cards = document.getElementsByClassName("room-card");
+
+        for (var i = 0; i < cards.length; i++) {
+            var cardCap = parseInt(cards[i].getAttribute("data-capacity"));
+            if (cardCap >= minCap) {
+                cards[i].style.display = "block";
+            } else {
+                cards[i].style.display = "none";
+            }
+        }
+    }
+
+    function openModal(spaceName, blockName, capacity) {
+        modal.style.display = "block";
+        title.innerText = "Reserve: " + spaceName;
+        inputSpace.value = spaceName;
+        inputBlock.value = blockName;
+        inputSize.max = capacity;
+        inputSize.value = 1;
+        
+        currentSpaceName = spaceName; 
+        dateSelect.selectedIndex = 0; 
+        updateTimeSlots();
+    }
+
+    function updateTimeSlots() {
+        var selectedDate = dateSelect.value;
+        var fullMapForDate = fullSlotsData[selectedDate] || {}; 
+        var fullSlots = fullMapForDate[currentSpaceName] || []; 
+
+        // Clear UI
+        timeSelect.innerHTML = "";
+        visualTimeline.innerHTML = ""; 
+        var availableCount = 0;
+
+        // Loop through all time slots
+        for (var i = 0; i < allTimeSlots.length; i++) {
+            var slot = allTimeSlots[i];
+            
+            // Logic Update: Only mark as "Red/Booked" if capacity is reached
+            var isFull = fullSlots.includes(slot);
+
+            // A. UPDATE DROPDOWN
+            if (!isFull) {
+                var option = document.createElement("option");
+                option.value = slot;
+                option.text = slot;
+                timeSelect.appendChild(option);
+                availableCount++;
+            }
+
+            // B. UPDATE VISUAL TIMELINE
+            var bar = document.createElement("div");
+            bar.className = "timeline-slot " + (isFull ? "slot-booked" : "slot-available");
+            bar.setAttribute("data-time", slot); 
+            visualTimeline.appendChild(bar);
+        }
+
+        // Handle full status
+        if (availableCount === 0) {
+            timeSelect.style.display = "none";
+            noSlotsMsg.style.display = "block";
+            confirmBtn.disabled = true;
+            confirmBtn.style.background = "#ccc";
+        } else {
+            timeSelect.style.display = "block";
+            noSlotsMsg.style.display = "none";
+            confirmBtn.disabled = false;
+            confirmBtn.style.background = "#27ae60";
+        }
+    }
+
+    function closeModal() {
+        modal.style.display = "none";
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}

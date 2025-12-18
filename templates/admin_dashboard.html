@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 style="color: #c0392b;">Admin Dashboard</h2>
+
+<div style="margin-bottom: 20px;">
+    <a href="{{ url_for('admin_analytics') }}" class="btn-reserve" style="background-color: #8e44ad; text-decoration: none; display: inline-block; width: auto; padding: 10px 20px;">
+        📊 View Analytics
+    </a>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="flash-message {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card" style="padding: 20px; margin-bottom: 40px; border-top: 4px solid #27ae60;">
+    <h3 style="color: #2c3e50; margin-top: 0;">🟢 Current Active Reservations</h3>
+    
+    {% if active_reservations|length == 0 %}
+        <p style="color: #777;">No active reservations right now.</p>
+    {% else %}
+    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <thead>
+            <tr style="background: #f8f9fa; text-align: left; border-bottom: 2px solid #ddd;">
+                <th style="padding: 12px;">Username</th> 
+                <th style="padding: 12px;">Space</th>
+                <th style="padding: 12px;">Date/Time</th>
+                <th style="padding: 12px;">Group Size</th> 
+                <th style="padding: 12px;">Status</th>
+                <th style="padding: 12px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for res in active_reservations %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px; font-weight: bold; color: #2c3e50;">
+                    {{ res.user.student_id if res.user else 'Unknown' }}
+                </td>
+                <td style="padding: 12px;">{{ res.space_name }}</td>
+                <td style="padding: 12px;">{{ res.date }}<br><small>{{ res.time_slot }}</small></td>
+                <td style="padding: 12px; font-weight: bold;">{{ res.group_size }}</td>
+                
+                <td style="padding: 12px;">
+                    {% if res.status == 'Checked In' %}
+                        <span style="color: #27ae60; font-weight: bold;">✔ Checked In</span>
+                    {% else %}
+                        {% endif %}
+                </td>
+
+                <td style="padding: 12px;">
+                    <form action="{{ url_for('admin_delete_res', res_id=res.id) }}" method="POST">
+                        <button type="submit" class="btn-cancel" style="font-size: 12px; padding: 5px 10px;">Force Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<div class="card" style="padding: 20px; margin-bottom: 40px; background-color: #f9f9f9;">
+    <h3 style="color: #7f8c8d; margin-top: 0;">🕒 Reservation History</h3>
+    
+    {% if history_reservations|length == 0 %}
+        <p style="color: #aaa;">No history found.</p>
+    {% else %}
+    <table style="width: 100%; border-collapse: collapse; margin-top: 15px; color: #7f8c8d;">
+        <thead>
+            <tr style="background: #eee; text-align: left; border-bottom: 2px solid #ccc;">
+                <th style="padding: 12px;">Username</th> 
+                <th style="padding: 12px;">Space</th>
+                <th style="padding: 12px;">Date/Time</th>
+                <th style="padding: 12px;">Group Size</th> 
+                <th style="padding: 12px;">Status</th>
+                <th style="padding: 12px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for res in history_reservations %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px;">{{ res.user.student_id if res.user else 'Unknown' }}</td>
+                <td style="padding: 12px;">{{ res.space_name }}</td>
+                <td style="padding: 12px;">{{ res.date }}<br><small>{{ res.time_slot }}</small></td>
+                <td style="padding: 12px;">{{ res.group_size }}</td>
+                
+                <td style="padding: 12px;">
+                    {% if res.status == 'Forfeited (No Show)' %}
+                        <span style="color: #c0392b; font-weight: bold;">❌ No Show</span>
+                    {% elif res.status == 'Completed' %}
+                        <span style="color: #27ae60;">✔ Completed</span>
+                    {% elif res.status == 'Cancelled' %}
+                        <span style="color: #c0392b;">✖ Cancelled</span>
+                    {% else %}
+                        {{ res.status }}
+                    {% endif %}
+                </td>
+
+                <td style="padding: 12px;">
+                    <form action="{{ url_for('admin_delete_res', res_id=res.id) }}" method="POST">
+                        <button type="submit" class="btn-cancel" style="background:#999; font-size: 12px; padding: 5px 10px;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+
+<div class="card" style="padding: 20px;">
+    <h3>Registered Users</h3>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <thead>
+            <tr style="background: #f8f9fa; text-align: left; border-bottom: 2px solid #ddd;">
+                <th style="padding: 12px;">ID</th>
+                <th style="padding: 12px;">Name</th>
+                <th style="padding: 12px;">Username</th>
+                <th style="padding: 12px;">Role</th>
+                <th style="padding: 12px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px;">{{ user.id }}</td>
+                <td style="padding: 12px;">{{ user.firstname }} {{ user.lastname }}</td>
+                <td style="padding: 12px;">{{ user.student_id }}</td>
+                <td style="padding: 12px;">
+                    {% if user.is_admin %}
+                        <span style="color: #c0392b; font-weight: bold;">ADMIN</span>
+                    {% else %}
+                        <span style="color: #2c3e50;">Student</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 12px;">
+                    {% if not user.is_admin %}
+                    <form action="{{ url_for('admin_delete_user', user_id=user.id) }}" method="POST">
+                        <button type="submit" class="btn-cancel" style="background: #333; font-size: 12px; padding: 5px 10px;">Ban User</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
