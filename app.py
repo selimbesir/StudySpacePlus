@@ -12,9 +12,7 @@ import threading
 import time
 from winotify import Notification, audio
 
-# --- Resource Path Helper ---
 def resource_path(relative_path):
-    """Get absolute path to resource, works for dev and PyInstaller"""
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -26,7 +24,6 @@ static_folder = resource_path('static')
 
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
-# --- Enhanced Security Config ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here_change_in_production')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///studyspace.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -39,14 +36,15 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# --- Notification System ---
+#Notification System
 notification_thread = None
 stop_notifications = threading.Event()
 
+
+
 def check_upcoming_reservations():
-    """Background thread that checks for upcoming reservations and sends notifications"""
-    notified_start = set()  # Track which reservations we've already notified about (start)
-    notified_end = set()    # Track which reservations we've already notified about (end)
+    notified_start = set()
+    notified_end = set()
     
     while not stop_notifications.is_set():
         try:
@@ -54,7 +52,7 @@ def check_upcoming_reservations():
                 now = datetime.datetime.now()
                 print(f"\n[DEBUG] Checking notifications at {now.strftime('%H:%M:%S')}")
                 
-                # Get all active reservations
+                #Get all active reservations
                 active_reservations = Reservation.query.filter(
                     Reservation.status.in_(['Confirmed', 'Checked In'])
                 ).all()
@@ -62,7 +60,6 @@ def check_upcoming_reservations():
                 print(f"[DEBUG] Found {len(active_reservations)} active reservations")
                 
                 for res in active_reservations:
-                    # Parse reservation time
                     res_date = datetime.datetime.strptime(res.date, "%Y-%m-%d").date()
                     start_str = res.time_slot.split(' - ')[0]
                     end_str = res.time_slot.split(' - ')[1]
@@ -70,18 +67,14 @@ def check_upcoming_reservations():
                     res_start = datetime.datetime.combine(res_date, datetime.datetime.strptime(start_str, "%H:%M").time())
                     res_end = datetime.datetime.combine(res_date, datetime.datetime.strptime(end_str, "%H:%M").time())
                     
-                    # Handle reservations that end on the next day (e.g. 23:00 - 00:00)
                     if res_end < res_start:
                         res_end += timedelta(days=1)
                     
-                    # Check for 10 minutes before start
                     time_until_start = (res_start - now).total_seconds()
                     start_key = f"start_{res.id}"
-                    
                     print(f"[DEBUG] Reservation {res.id} - {res.space_name} at {res.time_slot}")
                     print(f"        Time until start: {time_until_start/60:.1f} minutes")
-                    
-                    # 10 minutes = 600 seconds, check within a 20-second window (590-610)
+
                     if 590 <= time_until_start <= 610 and start_key not in notified_start:
                         user = db.session.get(User, res.user_id)
                         if user:
@@ -96,13 +89,10 @@ def check_upcoming_reservations():
                             toast.show()
                             notified_start.add(start_key)
                     
-                    # Check for 10 minutes before end
                     time_until_end = (res_end - now).total_seconds()
                     end_key = f"end_{res.id}"
-                    
                     print(f"        Time until end: {time_until_end/60:.1f} minutes")
-                    
-                    # 10 minutes = 600 seconds, check within a 20-second window (590-610)
+
                     if 590 <= time_until_end <= 610 and end_key not in notified_end:
                         user = db.session.get(User, res.user_id)
                         if user:
@@ -116,20 +106,17 @@ def check_upcoming_reservations():
                             toast.set_audio(audio.Default, loop=False)
                             toast.show()
                             notified_end.add(end_key)
-                    
-                    # Clean up old notifications from memory
-                    if time_until_end < -3600:  # 1 hour after end
+                
+                    if time_until_end < -3600:
                         notified_start.discard(start_key)
                         notified_end.discard(end_key)
         
         except Exception as e:
             print(f"Notification error: {e}")
         
-        # Check every 30 seconds
         time.sleep(30)
 
 def start_notification_service():
-    """Start the background notification checker"""
     global notification_thread
     if notification_thread is None or not notification_thread.is_alive():
         stop_notifications.clear()
@@ -137,12 +124,11 @@ def start_notification_service():
         notification_thread.start()
         print(">>> Notification service started")
 
-# --- User Loader ---
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-# --- Database Models (Compatible with existing DB) ---
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     firstname = db.Column(db.String(50), nullable=False)
@@ -153,7 +139,6 @@ class User(db.Model, UserMixin):
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
-    
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
@@ -168,7 +153,7 @@ class Reservation(db.Model):
     group_size = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(20), default='Confirmed', nullable=False)
 
-# --- Constants ---
+#Rooms and times
 TIME_SLOTS = [
     "09:00 - 10:00", "10:00 - 11:00", "11:00 - 12:00",
     "12:00 - 13:00", "13:00 - 14:00", "14:00 - 15:00",
@@ -178,14 +163,14 @@ TIME_SLOTS = [
 ]
 
 spaces = [
-    # Block A
+    #Block A
     {"id": 11, "name": "Room A200", "block": "A", "capacity": 30, "status": "available"},
     {"id": 12, "name": "Room A201", "block": "A", "capacity": 30, "status": "reserved"},
     {"id": 13, "name": "Room A202", "block": "A", "capacity": 30, "status": "available"},
     {"id": 14, "name": "Room A203", "block": "A", "capacity": 15, "status": "available"},
     {"id": 15, "name": "Room A204", "block": "A", "capacity": 15, "status": "available"},
     
-    # Block C
+    #Block C
     {"id": 30, "name": "Room CB50", "block": "C", "capacity": 20, "status": "available"},
     {"id": 31, "name": "Room CB51", "block": "C", "capacity": 20, "status": "reserved"},
     {"id": 32, "name": "Room CB52", "block": "C", "capacity": 20, "status": "available"},
@@ -216,9 +201,12 @@ spaces = [
     {"id": 57, "name": "Room C415", "block": "C", "capacity": 20, "status": "available"},
 ]
 
-# --- Helper Functions ---
+
+#Main functions:
+
+
+
 def admin_required(f):
-    """Decorator for admin-only routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session or not session.get('is_admin'):
@@ -227,10 +215,8 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- Security Middleware ---
 @app.before_request
 def check_user_validity():
-    """Validate user session before each request"""
     if request.endpoint and 'static' in request.endpoint:
         return
     
@@ -241,7 +227,6 @@ def check_user_validity():
             flash("Your account has been deactivated.", "error")
             return redirect(url_for('login'))
 
-# --- Routes ---
 @app.route('/')
 def root():
     if 'user_id' in session:
@@ -285,7 +270,6 @@ def register():
         student_id = request.form.get('student_id', '').strip()
         password = request.form.get('password', '')
         
-        # Validation
         if not all([firstname, lastname, student_id, password]):
             flash('All fields are required!', 'error')
             return redirect(url_for('register'))
@@ -294,12 +278,10 @@ def register():
             flash('Password must be at least 6 characters long.', 'error')
             return redirect(url_for('register'))
         
-        # Check if user exists
         if User.query.filter_by(student_id=student_id).first():
             flash('Username already exists!', 'error')
             return redirect(url_for('register'))
         
-        # Create new user
         new_user = User(
             firstname=firstname,
             lastname=lastname,
@@ -347,7 +329,7 @@ def show_classrooms(block_name):
     str_today = today.strftime("%Y-%m-%d")
     str_tomorrow = tomorrow.strftime("%Y-%m-%d")
     
-    # Identify past time slots for today
+    #Identify time slots that have passed
     current_hour = datetime.datetime.now().hour
     past_slots_today = []
     for slot in TIME_SLOTS:
@@ -355,13 +337,13 @@ def show_classrooms(block_name):
         if start_hour <= current_hour:
             past_slots_today.append(slot)
     
-    # Fetch active reservations
+    #Get active reservations
     reservations = Reservation.query.filter(
         Reservation.block_name == block_name,
         Reservation.date.in_([str_today, str_tomorrow])
     ).all()
     
-    # Calculate occupancy (only count Confirmed and Checked In)
+    #Calculate occupancy
     occupancy = {str_today: {}, str_tomorrow: {}}
     for res in reservations:
         if res.status in ['Confirmed', 'Checked In']:
@@ -371,7 +353,7 @@ def show_classrooms(block_name):
                 occupancy[res.date][res.space_name][res.time_slot] = 0
             occupancy[res.date][res.space_name][res.time_slot] += res.group_size
     
-    # Identify full slots
+    #Identify full slots
     full_slots_data = {str_today: {}, str_tomorrow: {}}
     for space in filtered_spaces:
         cap = space['capacity']
@@ -379,24 +361,24 @@ def show_classrooms(block_name):
         full_slots_data[str_today][s_name] = []
         full_slots_data[str_tomorrow][s_name] = []
         
-        # Check today (with time validation)
+        #Check today
         for slot in TIME_SLOTS:
-            # 1. Check if time has passed
+            #Check if time has passed
             if slot in past_slots_today:
                 full_slots_data[str_today][s_name].append(slot)
                 continue
             
-            # 2. Check capacity
+            #Check capacity
             booked_count = occupancy[str_today].get(s_name, {}).get(slot, 0)
             if booked_count >= cap:
                 full_slots_data[str_today][s_name].append(slot)
         
-        # Check tomorrow (capacity only)
+        #Check tomorrow
         for slot, count in occupancy[str_tomorrow].get(s_name, {}).items():
             if count >= cap:
                 full_slots_data[str_tomorrow][s_name].append(slot)
         
-        # Update visual status
+        #Update visual status
         if len(full_slots_data[str_today][s_name]) >= len(TIME_SLOTS):
             space['status'] = 'reserved'
         else:
@@ -421,7 +403,7 @@ def reserve():
     time_slot = request.form.get('time_slot')
     selected_date = request.form.get('selected_date')
     
-    # Validate group size
+    #Validate group size
     try:
         group_size = int(group_size_str)
         if group_size <= 0:
@@ -430,7 +412,7 @@ def reserve():
         flash("Invalid group size.", "error")
         return redirect(url_for('show_classrooms', block_name=block_name))
 
-    # Check for past time slots
+    #Check for past time slots
     date_today = datetime.date.today().strftime("%Y-%m-%d")
     current_hour = datetime.datetime.now().hour
     slot_start = int(time_slot.split(':')[0])
@@ -441,7 +423,7 @@ def reserve():
                                time_slot=time_slot, 
                                block_name=block_name)
 
-    # Find capacity
+    #Find capacity
     capacity = 0
     for s in spaces:
         if s['name'] == space_name:
@@ -454,7 +436,7 @@ def reserve():
                                time_slot=time_slot, 
                                block_name=block_name)
 
-    # Check existing reservations (only active ones)
+    #Check existing reservations
     existing_res = Reservation.query.filter_by(
         space_name=space_name, 
         date=selected_date, 
@@ -469,7 +451,7 @@ def reserve():
                                time_slot=time_slot, 
                                block_name=block_name)
 
-    # Create reservation
+    #Create reservation
     new_res = Reservation(
         user_id=session['user_id'],
         space_name=space_name,
@@ -491,16 +473,15 @@ def my_reservations():
     
     now = datetime.datetime.now()
     
-    # Fetch user's reservations
+    #Get users reservations
     all_reservations = Reservation.query.filter_by(user_id=session['user_id'])\
         .order_by(Reservation.date, Reservation.time_slot).all()
         
-    # Auto-update statuses and separate reservations
+    #update status
     active_reservations = []
     past_reservations = []
 
     for res in all_reservations:
-        # Parse dates
         res_date_obj = datetime.datetime.strptime(res.date, "%Y-%m-%d").date()
         start_str = res.time_slot.split(' - ')[0]
         end_str = res.time_slot.split(' - ')[1]
@@ -508,26 +489,23 @@ def my_reservations():
         res_start_dt = datetime.datetime.combine(res_date_obj, datetime.datetime.strptime(start_str, "%H:%M").time())
         res_end_dt = datetime.datetime.combine(res_date_obj, datetime.datetime.strptime(end_str, "%H:%M").time())
 
-        # Auto-update: Handle "Confirmed" (No Shows)
         if res.status == 'Confirmed':
             checkin_deadline = res_start_dt + timedelta(minutes=10)
             if now > checkin_deadline:
                 res.status = "No Show"
                 db.session.commit()
 
-        # Auto-update: Handle "Checked In" (Completion)
         elif res.status == 'Checked In':
             if now > res_end_dt:
                 res.status = "Completed"
                 db.session.commit()
 
-        # Separate active vs history
         if res.status in ['Cancelled', 'Completed', 'No Show', 'Expired']:
             past_reservations.append(res)
         else:
             active_reservations.append(res)
 
-    # Reverse past reservations (most recent first)
+    #past reservations
     past_reservations.reverse()
 
     return render_template('my_reservations.html', 
@@ -549,14 +527,14 @@ def check_in(res_id):
         flash("This reservation cannot be checked in.", "warning")
         return redirect(url_for('my_reservations'))
     
-    # Check if within check-in window (15 min before to 10 min after start)
+    #Check if inside check in time (15 min before to 10 min after start)
     res_date = datetime.datetime.strptime(reservation.date, "%Y-%m-%d").date()
     start_time = datetime.datetime.strptime(reservation.time_slot.split(' - ')[0], "%H:%M").time()
     res_start = datetime.datetime.combine(res_date, start_time)
     now = datetime.datetime.now()
     
     if not ((res_start - timedelta(minutes=15)) <= now <= (res_start + timedelta(minutes=10))):
-        flash("Check-in is only available 15 minutes before to 10 minutes after the start time.", "warning")
+        flash("Check in is only available 15 minutes before to 10 minutes after the start time.", "warning")
         return redirect(url_for('my_reservations'))
     
     reservation.status = "Checked In"
@@ -585,20 +563,20 @@ def cancel_reservation(res_id):
     
     return redirect(url_for('my_reservations'))
 
-# --- Admin Routes ---
+#Admin roles
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
     now = datetime.datetime.now()
     
-    # Fetch all reservations
+    #all reservations
     all_reservations = Reservation.query.order_by(Reservation.date.desc(), Reservation.time_slot.desc()).all()
     all_users = User.query.all()
     
     active_reservations = []
     history_reservations = []
 
-    # Auto-update statuses and separate
+    #update status
     for res in all_reservations:
         res_date_obj = datetime.datetime.strptime(res.date, "%Y-%m-%d").date()
         start_str = res.time_slot.split(' - ')[0] 
@@ -607,7 +585,6 @@ def admin_dashboard():
         res_start_dt = datetime.datetime.combine(res_date_obj, datetime.datetime.strptime(start_str, "%H:%M").time())
         res_end_dt = datetime.datetime.combine(res_date_obj, datetime.datetime.strptime(end_str, "%H:%M").time())
 
-        # Auto-update statuses
         if res.status == 'Confirmed':
             checkin_deadline = res_start_dt + timedelta(minutes=10)
             if now > checkin_deadline:
@@ -619,7 +596,6 @@ def admin_dashboard():
                 res.status = "Completed"
                 db.session.commit()
 
-        # Separate
         if res.status in ['Cancelled', 'Completed', 'No Show', 'Expired']:
             history_reservations.append(res)
         else:
@@ -646,9 +622,8 @@ def admin_delete_user(user_id):
     user = db.session.get(User, user_id)
     if user:
         if user.id == session['user_id']:
-            flash("You cannot delete your own admin account!", "error")
+            flash("You cannot delete admin account!", "error")
         else:
-            # Delete user's reservations first
             user_res = Reservation.query.filter_by(user_id=user.id).all()
             for r in user_res:
                 db.session.delete(r)
@@ -662,19 +637,18 @@ def admin_delete_user(user_id):
 def admin_analytics():
     all_res = Reservation.query.all()
     
-    # Block popularity
+    #Block popularity
     block_counts = {'A': 0, 'C': 0}
     for r in all_res:
         if r.block_name in block_counts:
             block_counts[r.block_name] += 1
     
-    # Peak hours
+    #Peak hours
     time_counts = {slot: 0 for slot in TIME_SLOTS}
     for r in all_res:
         if r.time_slot in time_counts:
             time_counts[r.time_slot] += 1
     
-    # Convert for Chart.js
     block_labels = list(block_counts.keys())
     block_values = list(block_counts.values())
     time_labels = list(time_counts.keys())
@@ -686,13 +660,13 @@ def admin_analytics():
                            time_labels=time_labels,
                            time_values=time_values)
 
-# --- Application Startup ---
+#App startup
 if __name__ == '__main__':
     with app.app_context():
-        # Create database tables
+        #create database tables
         db.create_all()
 
-        # Create/update admin user
+        #Create/update admin user
         admin = User.query.filter_by(student_id='admin').first()
         if not admin:
             admin = User(
@@ -704,13 +678,13 @@ if __name__ == '__main__':
             admin.set_password('admin123')
             db.session.add(admin)
             db.session.commit()
-            print(">>> Admin account created: User='admin', Pass='admin123'")
+            print("Admin account created: User='admin', Pass='admin123'")
         else:
-            print(">>> Admin account exists")
+            print("Admin account exists")
     
-    # Start notification service
+    #Start notification service
     start_notification_service()
     
-    # Launch desktop application
+    #Launch desktop application
     webview.create_window('StudySpace+', app)
     webview.start()

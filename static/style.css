@@ -1,4 +1,3 @@
-/* General Styling */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f4f7f6;
@@ -12,7 +11,6 @@ body {
     padding: 20px;
 }
 
-/* Navigation */
 nav {
     background-color: #2c3e50;
     padding: 15px;
@@ -38,7 +36,6 @@ nav a:hover {
     color: #3498db;
 }
 
-/* Login Page */
 .login-box {
     background: white;
     width: 350px;
@@ -68,7 +65,6 @@ nav a:hover {
     font-size: 16px;
 }
 
-/* Dashboard Grid & Cards */
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -83,7 +79,6 @@ nav a:hover {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-/* Status Colors */
 .status-available {
     color: #27ae60;
     font-weight: bold;
@@ -94,7 +89,6 @@ nav a:hover {
     font-weight: bold;
 }
 
-/* Buttons */
 .btn-reserve {
     background-color: #27ae60;
     color: white;
@@ -120,7 +114,6 @@ nav a:hover {
     cursor: pointer;
 }
 
-/* Modal (Popup) */
 .modal {
     display: none;
     position: fixed;
@@ -151,10 +144,6 @@ nav a:hover {
 }
 
 
-
-/* ... existing css ... */
-
-/* Error Popup Styling */
 .flash-message {
     padding: 10px;
     margin-bottom: 15px;
@@ -166,13 +155,10 @@ nav a:hover {
 
 .flash-message.error {
     background-color: #fadbd8;
-    /* Light Red Background */
     color: #c0392b;
-    /* Dark Red Text */
     border: 1px solid #c0392b;
 }
 
-/* ... existing css ... */
 
 .flash-message {
     padding: 10px;
@@ -189,16 +175,12 @@ nav a:hover {
     border: 1px solid #c0392b;
 }
 
-/* NEW: Green success box */
 .flash-message.success {
     background-color: #d5f5e3;
     color: #27ae60;
     border: 1px solid #27ae60;
 }
 
-/* ... existing css ... */
-
-/* Filter Section */
 .filter-container {
     background: white;
     padding: 15px;
@@ -221,7 +203,6 @@ nav a:hover {
     border-radius: 4px;
 }
 
-/* Visual Timeline (The Gantt Chart) */
 .timeline-wrapper {
     display: flex;
     margin-bottom: 15px;
@@ -231,28 +212,23 @@ nav a:hover {
 
 .timeline-slot {
     flex: 1;
-    /* Distribute space evenly */
     height: 25px;
     border-radius: 3px;
     position: relative;
     cursor: default;
 }
 
-/* Colors for the visual bars */
 .slot-available {
     background-color: #27ae60;
-    /* Green */
     border: 1px solid #219150;
 }
 
 .slot-booked {
     background-color: #c0392b;
-    /* Red */
     border: 1px solid #a93226;
     opacity: 0.6;
 }
 
-/* Tooltip text on hover */
 .timeline-slot:hover::after {
     content: attr(data-time);
     position: absolute;
@@ -269,11 +245,8 @@ nav a:hover {
 }
 
 
-/* ... existing css ... */
-
 .btn-checkin {
     background-color: #2980b9;
-    /* Blue */
     color: white;
     padding: 5px 10px;
     border: none;
@@ -283,5 +256,4 @@ nav a:hover {
 
 .btn-checkin:hover {
     background-color: #1abc9c;
-    /* Teal on hover */
 }
