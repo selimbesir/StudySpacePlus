@@ -30,10 +30,17 @@ static_folder = resource_path('static')
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_dev_key')
-# Database connection string loaded from environment variable
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
-if not app.config['SQLALCHEMY_DATABASE_URI']:
-    raise RuntimeError("DATABASE_URL environment variable is not set. Please create a .env file.")
+
+# Database Configuration:
+# 1. Try to load from Cloud (Supabase) via .env
+# 2. Fallback to Local SQLite if .env is missing (for GitHub users/devs)
+cloud_db_url = os.environ.get('DATABASE_URL')
+if cloud_db_url:
+    app.config['SQLALCHEMY_DATABASE_URI'] = cloud_db_url
+    print(">>> Using Cloud Database (Supabase)")
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///studyspace.db'
+    print(">>> Using Local Database (SQLite Fallback)")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
