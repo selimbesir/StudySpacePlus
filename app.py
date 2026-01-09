@@ -12,6 +12,8 @@ import threading
 import time
 from winotify import Notification, audio
 
+from dotenv import load_dotenv
+
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
@@ -19,13 +21,19 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+# Load environment variables from bundled .env file
+load_dotenv(resource_path('.env'))
+
 template_folder = resource_path('templates')
 static_folder = resource_path('static')
 
 app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here_change_in_production')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///studyspace.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_dev_key')
+# Database connection string loaded from environment variable
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+if not app.config['SQLALCHEMY_DATABASE_URI']:
+    raise RuntimeError("DATABASE_URL environment variable is not set. Please create a .env file.")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -134,7 +142,7 @@ class User(db.Model, UserMixin):
     firstname = db.Column(db.String(50), nullable=False)
     lastname = db.Column(db.String(50), nullable=False)
     student_id = db.Column(db.String(20), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     
     def set_password(self, password):
