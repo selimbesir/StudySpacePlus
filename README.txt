@@ -21,6 +21,13 @@ the StudySpacePlus app is located in `StudySpacePlus\dist\StudySpacePlus.exe`
 
 you can move StudySpacePlus.exe to any directory you want and it will still work by itself, it doesnt need the rest of the files to work.
 
+
+online webapp version:
+StudySpacePlus is also available as a webapp so you dont need to download anything.
+you can access it here: https://studyspaceplus.onrender.com
+(since its on the free tier, it might take a minute to load correctly if no one has used it in a while)
+
+
 the app connects to the shared public cloud database so everyone sees the same reservations.
 NOTE: Database credentials are included in the source code for ease of access as this is a student project, if implemented in a production environment, the database credentials would be stored in a secure environment variable.
 
