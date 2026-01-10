@@ -26,5 +26,45 @@
     <div class="container">
         {% block content %}{% endblock %}
     </div>
+
+    <!-- Web Notification Polling -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if ("Notification" in window) {
+                if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                    Notification.requestPermission();
+                }
+            }
+
+            const notifiedIds = new Set();
+
+            function checkNotifications() {
+                fetch('/api/get_notifications')
+                    .then(response => {
+                        if (response.ok) return response.json();
+                        throw new Error('Network response was not ok');
+                    })
+                    .then(notifications => {
+                        notifications.forEach(note => {
+                            if (!notifiedIds.has(note.id)) {
+                                if (Notification.permission === "granted") {
+                                    new Notification(note.title, { body: note.message });
+                                } else {
+                                    alert(`${note.title}: ${note.message}`);
+                                }
+                                notifiedIds.add(note.id);
+                            }
+                        });
+                    })
+                    .catch(error => console.log('Notification poll error:', error));
+            }
+
+            // Check every 60 seconds
+            setInterval(checkNotifications, 60000);
+            
+            // Initial check
+            checkNotifications();
+        });
+    </script>
 </body>
 </html>

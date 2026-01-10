@@ -6,11 +6,18 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 import datetime
 from datetime import timedelta
-import webview
 from functools import wraps
 import threading
 import time
-from winotify import Notification, audio
+
+# Conditional imports for Desktop apps
+try:
+    import webview
+    from winotify import Notification, audio
+    DESKTOP_MODE = True
+except ImportError:
+    print(">>> Web Mode: Desktop libraries (webview, winotify) not found.")
+    DESKTOP_MODE = False
 
 from dotenv import load_dotenv
 
@@ -32,15 +39,8 @@ app = Flask(__name__, template_folder=template_folder, static_folder=static_fold
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_dev_key')
 
 # Database Configuration:
-# 1. Try to load from Cloud (Supabase) via .env
-# 2. Fallback to Local SQLite if .env is missing (for GitHub users/devs)
-cloud_db_url = os.environ.get('DATABASE_URL')
-if cloud_db_url:
-    app.config['SQLALCHEMY_DATABASE_URI'] = cloud_db_url
-    print(">>> Using Cloud Database (Supabase)")
-else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///studyspace.db'
-    print(">>> Using Local Database (SQLite Fallback)")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres.fzkhwpuidvwnzquagjrv:studyspaceplus%2B@aws-1-ap-south-1.pooler.supabase.com:5432/postgres')
+print(">>> Using Cloud Database (Supabase)")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -90,7 +90,7 @@ def check_upcoming_reservations():
                     print(f"[DEBUG] Reservation {res.id} - {res.space_name} at {res.time_slot}")
                     print(f"        Time until start: {time_until_start/60:.1f} minutes")
 
-                    if 590 <= time_until_start <= 610 and start_key not in notified_start:
+                    if 570 <= time_until_start <= 630 and start_key not in notified_start:
                         user = db.session.get(User, res.user_id)
                         if user:
                             print(f"[NOTIFICATION] Sending START notification for {res.space_name}")
@@ -108,7 +108,7 @@ def check_upcoming_reservations():
                     end_key = f"end_{res.id}"
                     print(f"        Time until end: {time_until_end/60:.1f} minutes")
 
-                    if 590 <= time_until_end <= 610 and end_key not in notified_end:
+                    if 570 <= time_until_end <= 630 and end_key not in notified_end:
                         user = db.session.get(User, res.user_id)
                         if user:
                             print(f"[NOTIFICATION] Sending END notification for {res.space_name}")
@@ -132,12 +132,63 @@ def check_upcoming_reservations():
         time.sleep(30)
 
 def start_notification_service():
+    # Only start background thread if in Desktop Mode
+    if not DESKTOP_MODE:
+        return
+
     global notification_thread
     if notification_thread is None or not notification_thread.is_alive():
         stop_notifications.clear()
         notification_thread = threading.Thread(target=check_upcoming_reservations, daemon=True)
         notification_thread.start()
-        print(">>> Notification service started")
+        print(">>> Desktop Notification service started")
+
+
+# API Endpoint for Web Notifications (Polling)
+@app.route('/api/get_notifications')
+@login_required
+def get_notifications():
+    now = datetime.datetime.now()
+    user_id = session.get('user_id')
+    
+    active_reservations = Reservation.query.filter(
+        Reservation.user_id == user_id,
+        Reservation.status.in_(['Confirmed', 'Checked In'])
+    ).all()
+    
+    notifications = []
+    
+    for res in active_reservations:
+        res_date = datetime.datetime.strptime(res.date, "%Y-%m-%d").date()
+        start_str = res.time_slot.split(' - ')[0]
+        end_str = res.time_slot.split(' - ')[1]
+        
+        res_start = datetime.datetime.combine(res_date, datetime.datetime.strptime(start_str, "%H:%M").time())
+        res_end = datetime.datetime.combine(res_date, datetime.datetime.strptime(end_str, "%H:%M").time())
+        
+        if res_end < res_start:
+            res_end += timedelta(days=1)
+            
+        time_until_start = (res_start - now).total_seconds()
+        time_until_end = (res_end - now).total_seconds()
+        
+        # Notify 10 mins before start (600s) - Allow a window
+        if 540 <= time_until_start <= 660: # 9 to 11 minutes
+            notifications.append({
+                "id": f"start_{res.id}",
+                "title": "Reservation Starting",
+                "message": f"Your reservation at {res.space_name} starts in 10 minutes!"
+            })
+            
+        # Notify 10 mins before end
+        if 540 <= time_until_end <= 660:
+            notifications.append({
+                "id": f"end_{res.id}",
+                "title": "Reservation Ending",
+                "message": f"Your reservation at {res.space_name} ends in 10 minutes!"
+            })
+
+    return jsonify(notifications)
 
 
 @login_manager.user_loader
@@ -697,9 +748,13 @@ if __name__ == '__main__':
         else:
             print("Admin account exists")
     
-    #Start notification service
+    #Start notification service (Desktop only)
     start_notification_service()
     
-    #Launch desktop application
-    webview.create_window('StudySpace+', app)
-    webview.start()
+    #Launch desktop application OR standard Flask run
+    if DESKTOP_MODE:
+        webview.create_window('StudySpace+', app)
+        webview.start()
+    else:
+        print(">>> Starting in WEB MODE (No desktop window)")
+        app.run(debug=True, host='0.0.0.0', port=5000)

@@ -21,9 +21,9 @@ the StudySpacePlus app is located in `StudySpacePlus\dist\StudySpacePlus.exe`
 
 you can move StudySpacePlus.exe to any directory you want and it will still work by itself, it doesnt need the rest of the files to work.
 
-By default, this uses a local test database. If you want to connect to the real cloud database, contact me for the .env credentials.
+the app connects to the shared public cloud database so everyone sees the same reservations.
+NOTE: Database credentials are included in the source code for ease of access as this is a student project, if implemented in a production environment, the database credentials would be stored in a secure environment variable.
 
-we use a cloud based database so when connected to it you are able to see all reservations and users ever created anywhere.
 
 credentials of the default admin account:
 Username: `admin`
